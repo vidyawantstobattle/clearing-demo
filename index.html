@@ -5,9 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clearing Demo</title>
   <style>
+    :root {
+      --orange: #FF6200;
+      --bg: #F9F9F9;
+      --text: #2B2B2B;
+    }
     body {
-      font-family: system-ui, sans-serif;
-      background: #f3f4f6;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       margin: 0;
       padding: 1rem;
       display: flex;
@@ -15,35 +21,48 @@
       align-items: center;
     }
     .card {
-      background: white;
-      border-radius: 1rem;
+      background: #fff;
+      border-radius: 1.25rem;
       padding: 1.5rem;
       max-width: 420px;
       width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      margin-top: 2rem;
+    }
+    h2 {
+      color: var(--orange);
+      text-align: center;
+      margin-bottom: 1rem;
     }
     button {
-      background: #2563eb;
+      background: var(--orange);
       color: white;
       border: none;
-      border-radius: 0.5rem;
+      border-radius: 0.75rem;
       padding: 0.75rem 1rem;
       font-size: 1rem;
-      margin-top: 0.5rem;
+      font-weight: 600;
+      margin-top: 0.75rem;
       width: 100%;
+      box-shadow: 0 2px 8px rgba(255,98,0,0.4);
+      transition: all 0.2s ease;
     }
-    button:hover { background: #1d4ed8; }
+    button:hover { background: #e35b00; box-shadow: 0 3px 10px rgba(255,98,0,0.5); }
     input, select {
       width: 100%;
       margin: 0.5rem 0;
       padding: 0.75rem;
-      border: 1px solid #d1d5db;
+      border: 1px solid #ddd;
       border-radius: 0.5rem;
       font-size: 1rem;
     }
-    #players-list { margin-top: 1rem; }
-    #expenses-count { margin-top: 1rem; font-size: 0.9rem; color: #555; }
-    #debts-list { margin-top: 1rem; }
+    #players-list, #expenses-count, #debts-list { margin-top: 1rem; }
+    #waiting-message {
+      text-align: center;
+      color: #666;
+      margin-top: 1rem;
+      font-style: italic;
+    }
     .hidden { display: none; }
   </style>
 </head>
@@ -54,6 +73,7 @@
   <input type="text" id="player-name" placeholder="Enter your name" />
   <button id="join-btn">Join</button>
   <div id="players-list"></div>
+  <div id="waiting-message" class="hidden">Waiting for Vidya to continue…</div>
 </div>
 
 <div class="card hidden" id="expense-screen">
@@ -64,14 +84,16 @@
   <label>Payees (select 2+):</label>
   <select id="payees" multiple size="5"></select>
   <label>Amount (1–1000):</label>
-  <input id="amount" type="number" min="1" max="1000" placeholder="Enter amount (1–1000)" />
+  <input id="amount" type="number" min="1" max="1000" placeholder="Enter amount" />
   <button id="submit-expense-btn">Submit Expense</button>
+  <div id="waiting-message-2" class="hidden">Waiting for Vidya to continue…</div>
 </div>
 
 <div class="card hidden" id="debts-screen">
   <h2>Who owes whom?</h2>
   <div id="debts-list"></div>
   <button id="simplify-btn" class="hidden">Simplify Debt</button>
+  <div id="waiting-message-3" class="hidden">Waiting for Vidya to continue…</div>
 </div>
 
 <div class="card hidden" id="host-controls">
@@ -85,7 +107,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
     getFirestore, collection, addDoc, getDocs, setDoc, doc,
-    deleteDoc, writeBatch, onSnapshot
+    deleteDoc, writeBatch, onSnapshot, updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -105,12 +127,15 @@
   let currentPlayerId = null;
   let currentPlayerName = null;
   let isHost = false;
-  let currentPhase = 1; // 1: login, 2: expenses, 3: debts
 
   const loginScreen = document.getElementById("login-screen");
   const expenseScreen = document.getElementById("expense-screen");
   const debtsScreen = document.getElementById("debts-screen");
   const hostControls = document.getElementById("host-controls");
+
+  const waiting1 = document.getElementById("waiting-message");
+  const waiting2 = document.getElementById("waiting-message-2");
+  const waiting3 = document.getElementById("waiting-message-3");
 
   const joinBtn = document.getElementById("join-btn");
   const continueBtn = document.getElementById("continue-btn");
@@ -123,12 +148,32 @@
   const payeesSelect = document.getElementById("payees");
   const amountInput = document.getElementById("amount");
   const debtsList = document.getElementById("debts-list");
+  const playersListDiv = document.getElementById("players-list");
 
-  // Sign in anonymously to Firebase
   signInAnonymously(auth).catch(console.error);
 
-  // Realtime players list
-  const playersListDiv = document.getElementById("players-list");
+  // --- Sync phase in Firestore for everyone
+  const phaseDoc = doc(db, "meta", "phase");
+  async function setPhase(n) { await setDoc(phaseDoc, { phase: n }); }
+
+  onSnapshot(phaseDoc, snap => {
+    const phase = snap.data()?.phase || 1;
+    if (!isHost) {
+      // Show/hide waiting messages for non-hosts
+      waiting1.classList.add("hidden");
+      waiting2.classList.add("hidden");
+      waiting3.classList.add("hidden");
+      loginScreen.classList.add("hidden");
+      expenseScreen.classList.add("hidden");
+      debtsScreen.classList.add("hidden");
+
+      if (phase === 1) { loginScreen.classList.remove("hidden"); waiting1.classList.remove("hidden"); }
+      if (phase === 2) { expenseScreen.classList.remove("hidden"); waiting2.classList.remove("hidden"); }
+      if (phase === 3) { debtsScreen.classList.remove("hidden"); waiting3.classList.remove("hidden"); }
+    }
+  });
+
+  // --- Players realtime
   onSnapshot(collection(db, "players"), (snapshot) => {
     const players = snapshot.docs.map(doc => doc.data());
     playersListDiv.innerHTML = "<strong>Players joined:</strong> " + players.map(p => p.name).join(", ");
@@ -138,7 +183,6 @@
       if (first.id === currentPlayerId) {
         isHost = true;
         currentPlayerName = "Vidya";
-        document.title = "Clearing Demo (Vidya)";
         setDoc(doc(db, "players", currentPlayerId), { id: currentPlayerId, name: "Vidya" });
         hostControls.classList.remove("hidden");
       }
@@ -153,19 +197,17 @@
     const existing = await getDocs(collection(db, "players"));
     const playerId = crypto.randomUUID();
 
-    // If first player, becomes Vidya (host)
     if (existing.empty) {
       name = "Vidya";
       isHost = true;
       hostControls.classList.remove("hidden");
       document.title = "Clearing Demo (Vidya)";
+      await setPhase(1);
     }
 
     await setDoc(doc(db, "players", playerId), { id: playerId, name });
     currentPlayerId = playerId;
     currentPlayerName = name;
-    localStorage.setItem("playerId", playerId);
-    localStorage.setItem("playerName", name);
 
     loginScreen.classList.add("hidden");
     expenseScreen.classList.remove("hidden");
@@ -196,31 +238,19 @@
     if (!payer || selectedPayees.length < 2) return alert("Select a payer and at least 2 payees.");
     if (isNaN(amount) || amount < 1 || amount > 1000) return alert("Please enter an amount between 1 and 1000.");
 
-    await addDoc(collection(db, "expenses"), {
-      payer, payees: selectedPayees, amount
-    });
-
+    await addDoc(collection(db, "expenses"), { payer, payees: selectedPayees, amount });
     amountInput.value = "";
   });
 
-  // Count total expenses
   onSnapshot(collection(db, "expenses"), (snapshot) => {
     expensesCount.textContent = `Total expenses submitted: ${snapshot.size}`;
   });
 
-  // Host actions
   continueBtn.addEventListener("click", async () => {
-    if (currentPhase === 1) {
-      currentPhase = 2;
-      loginScreen.classList.add("hidden");
-      expenseScreen.classList.remove("hidden");
-    } else if (currentPhase === 2) {
-      currentPhase = 3;
-      expenseScreen.classList.add("hidden");
-      debtsScreen.classList.remove("hidden");
-      await showDebts(false);
-      simplifyBtn.classList.remove("hidden");
-    }
+    const snap = await getDocs(phaseDoc);
+    const phase = (snap.docs?.[0]?.data?.phase) || 1;
+    if (phase === 1) { await setPhase(2); }
+    else if (phase === 2) { await setPhase(3); await showDebts(false); simplifyBtn.classList.remove("hidden"); }
   });
 
   resetBtn.addEventListener("click", async () => {
@@ -229,9 +259,7 @@
     snap.forEach(docSnap => batch.delete(docSnap.ref));
     await batch.commit();
     alert("All expenses reset.");
-    currentPhase = 2;
-    debtsScreen.classList.add("hidden");
-    expenseScreen.classList.remove("hidden");
+    await setPhase(2);
   });
 
   restartBtn.addEventListener("click", async () => {
@@ -242,8 +270,8 @@
     playersSnap.forEach(docSnap => batch.delete(docSnap.ref));
     expensesSnap.forEach(docSnap => batch.delete(docSnap.ref));
     await batch.commit();
+    await setPhase(1);
     alert("Game restarted.");
-    localStorage.clear();
     window.location.reload();
   });
 
