@@ -68,7 +68,7 @@
   apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
   authDomain: "clearing-demo.firebaseapp.com",
   projectId: "clearing-demo",
-  storageBucket: "clearing-demo.firebasestorage.app",
+  storageBucket: "clearing-demo.appspot.com",
   messagingSenderId: "21071168079",
   appId: "1:21071168079:web:4471b13152955dbde6a03a"
 };
@@ -86,12 +86,13 @@
   }
 
   // Firebase imports
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
     getFirestore, doc, collection, addDoc, setDoc, onSnapshot,
     getDocs, query, where, orderBy, updateDoc, deleteDoc, getDoc, writeBatch
-  } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js";
-  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-auth.js";
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
 
   const app = initializeApp(FIREBASE_CONFIG);
   const db = getFirestore(app);
