@@ -1,518 +1,296 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>Clearing Demo — Classroom</title>
-<style>
-  /* Mobile-first, simple UI */
-  :root{
-    --accent:#0b63ff;
-    --bg:#0f1720;
-    --card:#0b1220;
-    --muted:#9aa4b2;
-    --white:#eef2ff;
-    font-family: Inter, Roboto, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial;
-  }
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071127 0%, #0b1220 100%);color:var(--white);}
-  .wrap{max-width:520px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:100vh;box-sizing:border-box;}
-  header{display:flex;align-items:center;gap:12px;}
-  .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#6f9cff);display:flex;align-items:center;justify-content:center;font-weight:700;}
-  h1{font-size:18px;margin:0;}
-  .card{background:rgba(255,255,255,0.04);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.45);}
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
-  input[type="text"], input[type="number"], select, .multi-select {width:100%;padding:12px;border-radius:10px;border:none;background:rgba(255,255,255,0.02);color:var(--white);font-size:15px;box-sizing:border-box;}
-  button{background:var(--accent);border:none;color:white;padding:12px;border-radius:10px;font-weight:600;font-size:15px;width:100%;}
-  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);}
-  .muted{color:var(--muted);font-size:13px;}
-  .row{display:flex;gap:8px;}
-  .col{flex:1;}
-  .players-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
-  .player-pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:13px;}
-  .big-num{font-size:22px;font-weight:700;}
-  .center{display:flex;align-items:center;justify-content:center;}
-  .control-row{display:flex;gap:8px;}
-  .danger{background:#ff3b3b;}
-  .small{font-size:13px;padding:8px;border-radius:8px;}
-  .counter{font-size:14px;font-weight:700;}
-  .debt-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
-  .debt-item{padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;}
-  footer{margin-top:auto;color:var(--muted);font-size:12px;text-align:center;padding:12px 0;}
-  @media(min-width:600px){
-    .wrap{padding:24px;}
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clearing Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      width: 100%;
+    }
+    button:hover { background: #1d4ed8; }
+    input, select {
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+    #players-list { margin-top: 1rem; }
+    #expenses-count { margin-top: 1rem; font-size: 0.9rem; color: #555; }
+    #debts-list { margin-top: 1rem; }
+    .hidden { display: none; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="logo">C</div>
-    <div>
-      <h1>Clearing / Simplify Demo</h1>
-      <div class="muted">Mobile-first classroom demo — host controls progression</div>
-    </div>
-  </header>
 
-  <!-- Main content appears here -->
-  <div id="app"></div>
-
-  <footer>
-    Tip: Teacher should open this page first to become the Host (Player 1). Share the same link with the audience.
-  </footer>
+<div class="card" id="login-screen">
+  <h2>Join the Clearing Demo</h2>
+  <input type="text" id="player-name" placeholder="Enter your name" />
+  <button id="join-btn">Join</button>
+  <div id="players-list"></div>
 </div>
 
-<!-- Firebase SDK (modular) -->
+<div class="card hidden" id="expense-screen">
+  <h2>Add an Expense</h2>
+  <p id="expenses-count"></p>
+  <label>Payer:</label>
+  <select id="payer"></select>
+  <label>Payees (select 2+):</label>
+  <select id="payees" multiple size="5"></select>
+  <label>Amount (1–1000):</label>
+  <input id="amount" type="number" min="1" max="1000" placeholder="Enter amount (1–1000)" />
+  <button id="submit-expense-btn">Submit Expense</button>
+</div>
+
+<div class="card hidden" id="debts-screen">
+  <h2>Who owes whom?</h2>
+  <div id="debts-list"></div>
+  <button id="simplify-btn" class="hidden">Simplify Debt</button>
+</div>
+
+<div class="card hidden" id="host-controls">
+  <h2>Host Controls (Vidya)</h2>
+  <button id="continue-btn">Continue</button>
+  <button id="reset-btn">Reset Expenses</button>
+  <button id="restart-btn">Start Over</button>
+</div>
+
 <script type="module">
-  // ---------- CONFIG: Replace with your Firebase project's config ----------
-  const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
-  authDomain: "clearing-demo.firebaseapp.com",
-  projectId: "clearing-demo",
-  storageBucket: "clearing-demo.appspot.com",
-  messagingSenderId: "21071168079",
-  appId: "1:21071168079:web:4471b13152955dbde6a03a"
-};
-  // -----------------------------------------------------------------------
-
-  // Basic utility
-  const $ = (sel) => document.querySelector(sel);
-  const appEl = $('#app');
-
-  // Abort if config not filled
-  if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
-    appEl.innerHTML = `<div class="card"><strong style="color:#ffd6a5">Missing Firebase config</strong>
-    <p class="muted">Paste your Firebase config into the FIREBASE_CONFIG object in this file and redeploy.</p></div>`;
-    throw new Error('Missing Firebase config');
-  }
-
-  // Firebase imports
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
-    getFirestore, doc, collection, addDoc, setDoc, onSnapshot,
-    getDocs, query, where, orderBy, updateDoc, deleteDoc, getDoc, writeBatch
+    getFirestore, collection, addDoc, getDocs, setDoc, doc,
+    deleteDoc, writeBatch, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
+    authDomain: "clearing-demo.firebaseapp.com",
+    projectId: "clearing-demo",
+    storageBucket: "clearing-demo.appspot.com",
+    messagingSenderId: "21071168079",
+    appId: "1:21071168079:web:4471b13152955dbde6a03a"
+  };
 
   const app = initializeApp(FIREBASE_CONFIG);
   const db = getFirestore(app);
   const auth = getAuth(app);
 
-  // Anonymous auth so each client has uid
-  await signInAnonymously(auth).catch(()=>{ /* ignore */ });
-  const uid = auth.currentUser.uid;
+  let currentPlayerId = null;
+  let currentPlayerName = null;
+  let isHost = false;
+  let currentPhase = 1; // 1: login, 2: expenses, 3: debts
 
-  // We'll use a single room id. You can pass ?room=whatever in URL to create a unique room if you want.
-  const urlParams = new URLSearchParams(location.search);
-  const ROOM_ID = urlParams.get('room') || 'classroom-demo';
+  const loginScreen = document.getElementById("login-screen");
+  const expenseScreen = document.getElementById("expense-screen");
+  const debtsScreen = document.getElementById("debts-screen");
+  const hostControls = document.getElementById("host-controls");
 
-  // Firestore refs
-  const roomDocRef = doc(db, 'rooms', ROOM_ID);
-  const playersColRef = collection(db, 'rooms', ROOM_ID, 'players');
-  const expensesColRef = collection(db, 'rooms', ROOM_ID, 'expenses');
+  const joinBtn = document.getElementById("join-btn");
+  const continueBtn = document.getElementById("continue-btn");
+  const resetBtn = document.getElementById("reset-btn");
+  const restartBtn = document.getElementById("restart-btn");
+  const simplifyBtn = document.getElementById("simplify-btn");
 
-  // Local state
-  let myName = localStorage.getItem(`clearing_name_${ROOM_ID}`) || null;
-  let myPlayerId = localStorage.getItem(`clearing_uid_${ROOM_ID}`) || null; // will be firestore doc id
-  let roomState = { phase: 'login', hostUid: null, simplified: false };
+  const expensesCount = document.getElementById("expenses-count");
+  const payerSelect = document.getElementById("payer");
+  const payeesSelect = document.getElementById("payees");
+  const amountInput = document.getElementById("amount");
+  const debtsList = document.getElementById("debts-list");
 
-  // --- helper functions interacting with Firestore ---
-  async function ensureRoomDoc() {
-    const snap = await getDoc(roomDocRef);
-    if (!snap.exists()) {
-      await setDoc(roomDocRef, {
-        phase: 'login',
-        hostUid: null,
-        simplified: false,
-        createdAt: Date.now()
-      });
+  // Sign in anonymously to Firebase
+  signInAnonymously(auth).catch(console.error);
+
+  // Realtime players list
+  const playersListDiv = document.getElementById("players-list");
+  onSnapshot(collection(db, "players"), (snapshot) => {
+    const players = snapshot.docs.map(doc => doc.data());
+    playersListDiv.innerHTML = "<strong>Players joined:</strong> " + players.map(p => p.name).join(", ");
+    updatePlayerSelectors(players);
+    if (players.length > 0) {
+      const first = players[0];
+      if (first.id === currentPlayerId) {
+        isHost = true;
+        currentPlayerName = "Vidya";
+        document.title = "Clearing Demo (Vidya)";
+        setDoc(doc(db, "players", currentPlayerId), { id: currentPlayerId, name: "Vidya" });
+        hostControls.classList.remove("hidden");
+      }
     }
+  });
+
+  async function joinGame() {
+    const nameInput = document.getElementById("player-name");
+    let name = nameInput.value.trim();
+    if (!name) return alert("Please enter your name.");
+
+    const existing = await getDocs(collection(db, "players"));
+    const playerId = crypto.randomUUID();
+
+    // If first player, becomes Vidya (host)
+    if (existing.empty) {
+      name = "Vidya";
+      isHost = true;
+      hostControls.classList.remove("hidden");
+      document.title = "Clearing Demo (Vidya)";
+    }
+
+    await setDoc(doc(db, "players", playerId), { id: playerId, name });
+    currentPlayerId = playerId;
+    currentPlayerName = name;
+    localStorage.setItem("playerId", playerId);
+    localStorage.setItem("playerName", name);
+
+    loginScreen.classList.add("hidden");
+    expenseScreen.classList.remove("hidden");
   }
 
-  await ensureRoomDoc();
+  joinBtn.addEventListener("click", joinGame);
 
-  // Subscribe to room state
-  onSnapshot(roomDocRef, (snap) => {
-    if (!snap.exists()) return;
-    roomState = snap.data();
-    render(); // re-render UI
-  });
+  function updatePlayerSelectors(players) {
+    payerSelect.innerHTML = "";
+    payeesSelect.innerHTML = "";
+    players.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      payerSelect.appendChild(opt);
 
-  // Subscribe to players and expenses for reactive UI
-  let playersSnapshot = [];
-  onSnapshot(playersColRef, (snap) => {
-    playersSnapshot = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  });
-
-  let expensesSnapshot = [];
-  onSnapshot(expensesColRef, (snap) => {
-    expensesSnapshot = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  });
-
-  // Add player
-  async function joinAs(name) {
-    // If already joined with id, update name
-    if (myPlayerId) {
-      const pRef = doc(db, 'rooms', ROOM_ID, 'players', myPlayerId);
-      await setDoc(pRef, { uid, name, joinedAt: Date.now() }, { merge: true });
-    } else {
-      const pRef = await addDoc(playersColRef, { uid, name, joinedAt: Date.now() });
-      myPlayerId = pRef.id;
-      localStorage.setItem(`clearing_uid_${ROOM_ID}`, myPlayerId);
-      localStorage.setItem(`clearing_name_${ROOM_ID}`, name);
-    }
-
-    // Try to set host if none set
-    const roomSnap = await getDoc(roomDocRef);
-    const room = roomSnap.data();
-    if (!room.hostUid) {
-      // set host to this uid
-      await updateDoc(roomDocRef, { hostUid: uid });
-    }
-  }
-
-  // Add expense
-  async function addExpense({ payerUid, payeeUids, amount }) {
-    if (!Number.isInteger(amount) || amount <= 0) return;
-    await addDoc(expensesColRef, {
-      payerUid, payeeUids, amount, createdAt: Date.now()
+      const opt2 = document.createElement("option");
+      opt2.value = p.id;
+      opt2.textContent = p.name;
+      payeesSelect.appendChild(opt2);
     });
   }
 
-  // Update room phase
-  async function setPhase(phase, extras = {}) {
-    await updateDoc(roomDocRef, { phase, ...extras });
-  }
+  document.getElementById("submit-expense-btn").addEventListener("click", async () => {
+    const payer = payerSelect.value;
+    const selectedPayees = Array.from(payeesSelect.selectedOptions).map(o => o.value);
+    const amount = parseInt(amountInput.value);
+    if (!payer || selectedPayees.length < 2) return alert("Select a payer and at least 2 payees.");
+    if (isNaN(amount) || amount < 1 || amount > 1000) return alert("Please enter an amount between 1 and 1000.");
 
-  // Reset (clear expenses, go back to adding)
-  async function resetExpenses() {
-    // Delete all expenses in batch
-    const snaps = await getDocs(expensesColRef);
-    const batch = writeBatch(db);
-    snaps.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    // Reset simplified flag and phase to adding
-    await updateDoc(roomDocRef, { phase: 'adding', simplified: false });
-  }
+    await addDoc(collection(db, "expenses"), {
+      payer, payees: selectedPayees, amount
+    });
 
-  // Simplify algorithm — compute net balances and greedy settle
-  function computeDebts(expenses, players) {
-    // Map uid->name
-    const names = {};
-    players.forEach(p => names[p.uid] = p.name);
-
-    // Build pairwise owed amounts from expenses (payer -> each payee)
-    // We'll compute net balances per user
-    const balances = {}; // uid -> cents (but we work with integers)
-    players.forEach(p => balances[p.uid] = 0);
-
-    // Each expense: payer paid `amount`, split equally among all payees (count).
-    // Requirement: payer may be one of payees (including themselves). But user said "Player A picks payer (including themselves) and select 2 or more payees". So number of payees >=2.
-    // We'll assume amount is whole integer currency units.
-    for (const ex of expenses) {
-      const payer = ex.payerUid;
-      const payees = ex.payeeUids || [];
-      const amount = Number(ex.amount);
-      if (!Array.isArray(payees) || payees.length === 0) continue;
-      const share = Math.floor(amount / payees.length); // integer share (we require whole numbers)
-      // Important: to ensure total sums match, assign share * payees.length deducted from payer and added to payees
-      // Payer paid full amount, so payer's net +amount initially then each payee owes share
-      // We will increase payees by share (they owe), and decrease payer by share * payees.length
-      if (!(payer in balances)) balances[payer] = 0;
-      balances[payer] -= share * payees.length;
-      for (const pp of payees) {
-        if (!(pp in balances)) balances[pp] = 0;
-        balances[pp] += share;
-      }
-    }
-
-    // Now transform balances to list; positive means owes money? Let's make convention:
-    // Currently we added payees +share and payer -total. So positive balance = they owe (they are net debtor), negative = they should receive money.
-    // For readability we'll keep that and use signs accordingly.
-
-    // Create arrays of debtors (positive) and creditors (negative)
-    const debtors = [], creditors = [];
-    for (const uid in balances) {
-      const amt = balances[uid];
-      if (amt > 0) debtors.push({ uid, amount: amt });
-      else if (amt < 0) creditors.push({ uid, amount: -amt }); // store positive receivable
-    }
-
-    // Greedy match largest debtor with largest creditor
-    debtors.sort((a,b)=>b.amount-a.amount);
-    creditors.sort((a,b)=>b.amount-a.amount);
-
-    const settlements = []; // {from, to, amount}
-    let di = 0, ci = 0;
-    while (di < debtors.length && ci < creditors.length) {
-      const d = debtors[di];
-      const c = creditors[ci];
-      const transfer = Math.min(d.amount, c.amount);
-      settlements.push({ from: d.uid, to: c.uid, amount: transfer });
-      d.amount -= transfer;
-      c.amount -= transfer;
-      if (d.amount === 0) di++;
-      if (c.amount === 0) ci++;
-    }
-
-    // Build before: pairwise who owes whom from balances (we can show non-zero pairwise)
-    // However, "BEFORE" they want to see convoluted who owes whom — we can derive pairwise from expenses straightforwardly:
-    // Construct pairwise map: map[from][to] = amount
-    const beforePairs = {};
-    for (const ex of expenses) {
-      const payer = ex.payerUid;
-      const payees = ex.payeeUids || [];
-      const amount = Number(ex.amount);
-      const share = Math.floor(amount / payees.length);
-      for (const pp of payees) {
-        // pp owes payer share
-        if (!beforePairs[pp]) beforePairs[pp] = {};
-        beforePairs[pp][payer] = (beforePairs[pp][payer] || 0) + share;
-      }
-    }
-
-    // Convert beforePairs to list of objects for UI
-    const beforeList = [];
-    for (const from in beforePairs) {
-      for (const to in beforePairs[from]) {
-        const amt = beforePairs[from][to];
-        if (amt !== 0) beforeList.push({ from, to, amount: amt });
-      }
-    }
-
-    // Convert settlements to display list with names
-    const afterList = settlements.map(s => ({ from: s.from, to: s.to, amount: s.amount }));
-
-    return { names, balances, beforeList, afterList, players };
-  }
-
-  // --- UI rendering ---
-  function render() {
-    const isHost = (roomState.hostUid === uid);
-    const phase = roomState.phase || 'login';
-    const players = playersSnapshot.slice().sort((a,b)=>a.joinedAt - b.joinedAt);
-    const expenses = expensesSnapshot.slice().sort((a,b)=>a.createdAt - b.createdAt);
-
-    // Quick helpers
-    function playerNameByUid(u) {
-      const p = players.find(x => x.uid === u);
-      return p ? p.name : (u === uid ? (myName || 'You') : 'Unknown');
-    }
-
-    // Compose UI for different phases
-    if (!myName) {
-      // Show login screen
-      appEl.innerHTML = `
-        <div class="card">
-          <label for="name">Enter a name (display name) — keep it short</label>
-          <input id="name" type="text" placeholder="e.g. Alice" />
-          <div style="height:10px"></div>
-          <button id="joinBtn">Join</button>
-          <div style="height:8px"></div>
-          <div class="muted">Players joined: <span class="big-num">${players.length}</span></div>
-          <div class="players-list">${players.map(p=>`<div class="player-pill">${p.name}${roomState.hostUid===p.uid ? ' · host':''}</div>`).join('')}</div>
-        </div>
-      `;
-      $('#joinBtn').onclick = async () => {
-        const name = $('#name').value.trim();
-        if (!name) return alert('Pick a short display name');
-        myName = name;
-        await joinAs(name);
-      };
-      return;
-    }
-
-    // After logged in: we can show different screens depending on phase
-    if (phase === 'login') {
-      // Wait for host to click continue
-      appEl.innerHTML = `
-        <div class="card">
-          <div class="muted">You're logged in as</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
-            <div>
-              <div style="font-weight:700">${myName}</div>
-              <div class="muted">Players joined: ${players.length}</div>
-            </div>
-            <div style="text-align:right">
-              <div class="muted">Host</div>
-              <div style="font-weight:700">${roomState.hostUid ? playerNameByUid(roomState.hostUid) : '—'}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="muted">Players</div>
-          <div class="players-list">${players.map(p=>`<div class="player-pill">${p.name}${roomState.hostUid===p.uid ? ' · host':''}</div>`).join('')}</div>
-          <div style="height:10px"></div>
-          ${isHost ? `<button id="hostContinue">Continue → Add expenses</button>` : `<div class="muted">Waiting for host to start...</div>`}
-        </div>
-      `;
-      if (isHost) {
-        $('#hostContinue').onclick = async () => {
-          await setPhase('adding', { simplified: false });
-        };
-      }
-      return;
-    }
-
-    if (phase === 'adding') {
-      // Add expenses screen
-      // Build payer dropdown options from players
-      const payerOpts = players.map(p => `<option value="${p.uid}">${p.name}</option>`).join('');
-      const payeeOpts = players.map(p => `<label style="display:block;margin-bottom:6px;"><input type="checkbox" class="payeeChk" value="${p.uid}" /> ${p.name}</label>`).join('');
-
-      appEl.innerHTML = `
-        <div class="card">
-          <div class="muted">You're: <strong>${myName}${isHost? ' · host':''}</strong></div>
-          <div class="muted" style="margin-top:8px">Total expenses submitted: <span class="counter">${expenses.length}</span></div>
-          <div class="players-list" style="margin-top:8px">${players.map(p=>`<div class="player-pill">${p.name}${roomState.hostUid===p.uid ? ' · host':''}</div>`).join('')}</div>
-        </div>
-
-        <div class="card">
-          <label>Payer</label>
-          <select id="payer">${payerOpts}</select>
-
-          <div style="height:8px"></div>
-          <label>Select 2 or more payees (who share the cost)</label>
-          <div class="multi-select" id="payees" style="padding:8px;max-height:170px;overflow:auto;border-radius:8px;background:transparent;">
-            ${payeeOpts}
-          </div>
-
-          <div style="height:8px"></div>
-          <label>Amount (whole number only)</label>
-          <input id="amount" type="number" min="1" step="1" placeholder="e.g. 48" />
-
-          <div style="height:10px"></div>
-          <button id="submitExpense">Submit expense</button>
-          <div style="height:8px"></div>
-          ${isHost ? `<div class="control-row"><button id="hostContinue" class="small">Continue → Show debts</button><button id="hostReset" class="small btn-ghost">Reset</button></div>` : `<div class="muted">Wait until host moves on to show debts.</div>`}
-        </div>
-      `;
-
-      $('#submitExpense').onclick = async () => {
-        const payerUid = $('#payer').value;
-        const checkboxes = [...document.querySelectorAll('.payeeChk')].filter(c=>c.checked).map(c=>c.value);
-        const amountRaw = $('#amount').value;
-        const amount = Math.floor(Number(amountRaw));
-        if (!payerUid) return alert('Choose a payer.');
-        if (checkboxes.length < 2) return alert('Select at least 2 payees (as requested).');
-        if (!Number.isInteger(amount) || amount <= 0) return alert('Amount must be a positive whole number.');
-        // Submit
-        await addExpense({ payerUid, payeeUids: checkboxes, amount });
-        // clear amount and uncheck
-        $('#amount').value = '';
-        document.querySelectorAll('.payeeChk').forEach(c=>c.checked=false);
-      };
-
-      if (isHost) {
-        $('#hostContinue').onclick = async () => {
-          await setPhase('display', { simplified: false });
-        };
-        $('#hostReset').onclick = async () => {
-          if (!confirm('Reset will delete all submitted expenses and return to Add Expenses. Continue?')) return;
-          await resetExpenses();
-        };
-      }
-      return;
-    }
-
-    if (phase === 'display') {
-      // Display before (pairwise) and after (simplified) area
-      const { names, beforeList, afterList } = computeDebts(expenses, players);
-
-      // Helper to render list items
-      const beforeHtml = beforeList.length ? beforeList.map(b => {
-        return `<div class="debt-item"><div>${names[b.from] || b.from} → ${names[b.to] || b.to}</div><div> ${b.amount}</div></div>`;
-      }).join('') : `<div class="muted">No debts (no expenses) or all zero</div>`;
-
-      // If simplified already performed? roomState.simplified flag
-      const afterHtml = (roomState.simplified && afterList.length) ? afterList.map(a => {
-        return `<div class="debt-item"><div>${names[a.from] || a.from} → ${names[a.to] || a.to}</div><div> ${a.amount}</div></div>`;
-      }).join('') : `<div class="muted">Simplified result not yet computed</div>`;
-
-      appEl.innerHTML = `
-        <div class="card">
-          <div class="muted">Viewing debts — Phase controlled by host</div>
-          <div style="margin-top:8px" class="muted">Players: ${players.length} · Expenses: ${expenses.length}</div>
-        </div>
-
-        <div class="card">
-          <div style="font-weight:700;margin-bottom:6px">BEFORE simplify — who owes whom (convoluted)</div>
-          <div class="debt-list">${beforeHtml}</div>
-        </div>
-
-        <div class="card">
-          <div style="font-weight:700;margin-bottom:6px">AFTER simplify</div>
-          <div class="debt-list" id="afterArea">${afterHtml}</div>
-        </div>
-
-        <div class="card control-row">
-          ${isHost ? `<button id="simplifyBtn">Simplify debts</button><button id="resetBtn" class="btn-ghost">Reset</button><button id="backToAdd" class="small btn-ghost">Back to add</button>` : `<div class="muted">Only the host can simplify or reset.</div>`}
-        </div>
-      `;
-
-      if (isHost) {
-        $('#simplifyBtn').onclick = async () => {
-          // For our model, we don't need to store simplified details in DB except a flag; but we want everyone to see the simplified list.
-          // We'll set room.simplified = true and write a derived doc 'simplified' containing afterList
-          const computed = computeDebts(expenses, players);
-          // Save simplified results to room doc (so others can fetch)
-          await updateDoc(roomDocRef, { simplified: true, simplifiedAt: Date.now(), simplifiedPayload: computed.afterList });
-        };
-
-        $('#resetBtn').onclick = async () => {
-          if (!confirm('Reset will delete all submitted expenses and return to Add Expenses. Continue?')) return;
-          await resetExpenses();
-        };
-
-        $('#backToAdd').onclick = async () => {
-          // go back to adding without clearing expenses (if teacher wants)
-          await setPhase('adding', { simplified: false });
-        };
-      } else {
-        // Non-host clients should react to simplified payload changes and show afterArea
-        onSnapshot(roomDocRef, (snap) => {
-          if (!snap.exists()) return;
-          const r = snap.data();
-          if (r.simplified && r.simplifiedPayload) {
-            // Render payload
-            const payload = r.simplifiedPayload;
-            const html = payload.length ? payload.map(a => `<div class="debt-item"><div>${names[a.from] || a.from} → ${names[a.to] || a.to}</div><div> ${a.amount}</div></div>`).join('') : `<div class="muted">No settlements required</div>`;
-            const afterArea = document.getElementById('afterArea');
-            if (afterArea) afterArea.innerHTML = html;
-          }
-        });
-      }
-
-      // Also if host simplified and left simplifiedPayload in room doc, render for all clients
-      const rsnap = roomState;
-      if (rsnap.simplified && rsnap.simplifiedPayload) {
-        const payload = rsnap.simplifiedPayload;
-        const html = payload.length ? payload.map(a => `<div class="debt-item"><div>${names[a.from] || a.from} → ${names[a.to] || a.to}</div><div> ${a.amount}</div></div>`).join('') : `<div class="muted">No settlements required</div>`;
-        const afterArea = document.getElementById('afterArea');
-        if (afterArea) afterArea.innerHTML = html;
-      }
-
-      return;
-    }
-
-    // default fallback
-    appEl.innerHTML = `<div class="card">Unknown phase</div>`;
-  }
-
-  // Initial render
-  render();
-
-  // Keep listening for simplifiedPayload to show to non-hosts (when host clicks)
-  onSnapshot(roomDocRef, (snap) => {
-    if (!snap.exists()) return;
-    const r = snap.data();
-    // If simplifiedPayload exists and we are in display phase, re-render (render handles it)
-    if (r.simplifiedPayload) render();
+    amountInput.value = "";
   });
 
+  // Count total expenses
+  onSnapshot(collection(db, "expenses"), (snapshot) => {
+    expensesCount.textContent = `Total expenses submitted: ${snapshot.size}`;
+  });
+
+  // Host actions
+  continueBtn.addEventListener("click", async () => {
+    if (currentPhase === 1) {
+      currentPhase = 2;
+      loginScreen.classList.add("hidden");
+      expenseScreen.classList.remove("hidden");
+    } else if (currentPhase === 2) {
+      currentPhase = 3;
+      expenseScreen.classList.add("hidden");
+      debtsScreen.classList.remove("hidden");
+      await showDebts(false);
+      simplifyBtn.classList.remove("hidden");
+    }
+  });
+
+  resetBtn.addEventListener("click", async () => {
+    const batch = writeBatch(db);
+    const snap = await getDocs(collection(db, "expenses"));
+    snap.forEach(docSnap => batch.delete(docSnap.ref));
+    await batch.commit();
+    alert("All expenses reset.");
+    currentPhase = 2;
+    debtsScreen.classList.add("hidden");
+    expenseScreen.classList.remove("hidden");
+  });
+
+  restartBtn.addEventListener("click", async () => {
+    if (!confirm("This will remove ALL players and expenses. Continue?")) return;
+    const batch = writeBatch(db);
+    const playersSnap = await getDocs(collection(db, "players"));
+    const expensesSnap = await getDocs(collection(db, "expenses"));
+    playersSnap.forEach(docSnap => batch.delete(docSnap.ref));
+    expensesSnap.forEach(docSnap => batch.delete(docSnap.ref));
+    await batch.commit();
+    alert("Game restarted.");
+    localStorage.clear();
+    window.location.reload();
+  });
+
+  simplifyBtn.addEventListener("click", async () => {
+    await showDebts(true);
+  });
+
+  async function showDebts(simplify = false) {
+    const playersSnap = await getDocs(collection(db, "players"));
+    const players = Object.fromEntries(playersSnap.docs.map(d => [d.id, d.data().name]));
+    const expensesSnap = await getDocs(collection(db, "expenses"));
+    const balances = {};
+
+    for (const pId in players) balances[pId] = 0;
+
+    expensesSnap.docs.forEach(d => {
+      const e = d.data();
+      const share = e.amount / e.payees.length;
+      e.payees.forEach(pid => balances[pid] -= share);
+      balances[e.payer] += e.amount;
+    });
+
+    const debts = [];
+    const creditors = Object.entries(balances).filter(([_, v]) => v > 0);
+    const debtors = Object.entries(balances).filter(([_, v]) => v < 0);
+
+    if (simplify) {
+      creditors.sort((a,b) => b[1]-a[1]);
+      debtors.sort((a,b) => a[1]-b[1]);
+      let i=0,j=0;
+      while (i<creditors.length && j<debtors.length) {
+        const [cid, cAmt] = creditors[i];
+        const [did, dAmt] = debtors[j];
+        const amount = Math.min(cAmt, -dAmt);
+        debts.push(`${players[did]} owes ${players[cid]} ${amount.toFixed(0)}`);
+        creditors[i][1]-=amount;
+        debtors[j][1]+=amount;
+        if (creditors[i][1] < 0.01) i++;
+        if (debtors[j][1] > -0.01) j++;
+      }
+    } else {
+      for (const [pid, amt] of Object.entries(balances)) {
+        debts.push(`${players[pid]}: ${amt.toFixed(0)}`);
+      }
+    }
+    debtsList.innerHTML = debts.map(d => `<div>${d}</div>`).join("");
+  }
 </script>
 </body>
 </html>
