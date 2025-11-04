@@ -15,7 +15,7 @@
     }
     h1, h2, h3 { color: #FF6200; }
     .container {
-      max-width: 400px;
+      max-width: 420px;
       margin: auto;
       padding: 20px;
     }
@@ -50,6 +50,21 @@
       border-left: 5px solid #FF6200;
       text-align: left;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .badge {
+      display: inline-block;
+      background: #ffd7bf;
+      color: #FF6200;
+      border-radius: 20px;
+      padding: 6px 12px;
+      margin: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 600;
+    }
+    .badge.selected {
+      background: #FF6200;
+      color: white;
     }
   </style>
 </head>
@@ -116,7 +131,9 @@
       else if (stage === "waiting") {
         appDiv.innerHTML = `
           <h3>Waiting for others to join...</h3>
-          <div>Players joined: ${players.map(p => p.name).join(", ")}</div>
+          <div style="margin: 10px 0;">
+            ${players.map(p => `<span class="badge">${p.name}</span>`).join(" ")}
+          </div>
           ${player.isAdmin ? `<button id="continueBtn">Continue</button>` : ""}
         `;
         if (player.isAdmin) {
@@ -132,21 +149,24 @@
           <select id="payerSelect">
             ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join("")}
           </select>
-          <input id="amountInput" type="number" placeholder="Amount (1-1000)" min="1" max="1000" />
-          <label>Select payees:</label><br/>
-          ${players.map(p => `
-            <label>
-              <input type="checkbox" class="payeeCheck" value="${p.id}"> ${p.name}
-            </label><br/>
-          `).join("")}
+          <input id="amountInput" type="number" placeholder="Amount (1–1000)" min="1" max="1000" />
+          <div id="payeesContainer">
+            ${players.map(p => `<span class="badge" data-id="${p.id}">${p.name}</span>`).join("")}
+          </div>
           <button id="addExpenseBtn">Add Expense</button>
           <div>Total Expenses: ${expenses.length}</div>
           ${player.isAdmin ? `<button id="continueBtn">Continue to Debts</button>` : ""}
         `;
+
+        // Badge click toggle
+        document.querySelectorAll(".badge").forEach(badge => {
+          badge.onclick = () => badge.classList.toggle("selected");
+        });
+
         document.getElementById("addExpenseBtn").onclick = async () => {
           const payer = document.getElementById("payerSelect").value;
           const amount = parseInt(document.getElementById("amountInput").value);
-          const payees = Array.from(document.querySelectorAll(".payeeCheck:checked")).map(c => c.value);
+          const payees = Array.from(document.querySelectorAll(".badge.selected")).map(b => b.dataset.id);
           if (!payer || !amount || amount < 1 || amount > 1000 || payees.length < 2) {
             alert("Enter valid amount (1–1000) and select 2+ payees");
             return;
@@ -172,10 +192,8 @@
 
         appDiv.innerHTML = `
           <h3>Debts</h3>
-          <div id="debtsDisplay">
-            ${simplified.length
-              ? simplified.map(x=>`<div class="card">${x}</div>`).join("")
-              : beforeList.map(x=>`<div class="card">${x}</div>`).join("")}
+          <div id="debtsDisplay" data-mode="raw">
+            ${beforeList.map(x => `<div class="card">${x}</div>`).join("")}
           </div>
           ${player.isAdmin ? `
             <div style="margin-top:20px;">
@@ -196,7 +214,7 @@
       }
     };
 
-    // 🔁 Listeners
+    // 🔁 Firebase listeners
     onSnapshot(collection(db, "players"), (snap) => {
       players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (stage === "waiting") render();
@@ -236,20 +254,19 @@
         if (c.amt < 0.5) creditors.shift();
         if (d.amt < 0.5) debtors.shift();
       }
-      render();
     }
 
     function toggleView() {
       const div = document.getElementById("debtsDisplay");
       if (!div) return;
-      if (div.dataset.mode === "simple") {
+      if (div.dataset.mode === "raw") {
+        div.innerHTML = simplified.map(x => `<div class="card">${x}</div>`).join("");
+        div.dataset.mode = "simple";
+      } else {
         div.innerHTML = expenses.map(
           e => `<div class="card">${findName(e.payer)} paid €${e.amount} for [${e.payees.map(findName).join(", ")}]</div>`
         ).join("");
         div.dataset.mode = "raw";
-      } else {
-        div.innerHTML = simplified.map(x=>`<div class="card">${x}</div>`).join("");
-        div.dataset.mode = "simple";
       }
     }
 
