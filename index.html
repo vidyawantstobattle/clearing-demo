@@ -5,320 +5,230 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clearing Demo</title>
   <style>
-    :root {
-      --orange: #FF6200;
-      --bg: #F9F9F9;
-      --text: #2B2B2B;
-    }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: sans-serif;
       margin: 0;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .card {
-      background: #fff;
-      border-radius: 1.25rem;
-      padding: 1.5rem;
-      max-width: 420px;
-      width: 100%;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-      margin-top: 2rem;
-    }
-    h2 {
-      color: var(--orange);
+      background: #fff6f0;
+      color: #333;
       text-align: center;
-      margin-bottom: 1rem;
     }
-    button {
-      background: var(--orange);
+    .btn {
+      background: #FF6200;
       color: white;
       border: none;
-      border-radius: 0.75rem;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      font-weight: 600;
-      margin-top: 0.75rem;
-      width: 100%;
-      box-shadow: 0 2px 8px rgba(255,98,0,0.4);
-      transition: all 0.2s ease;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 8px;
+      font-size: 16px;
     }
-    button:hover { background: #e35b00; box-shadow: 0 3px 10px rgba(255,98,0,0.5); }
+    .btn-gray {
+      background: #999;
+    }
     input, select {
-      width: 100%;
-      margin: 0.5rem 0;
-      padding: 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 0.5rem;
-      font-size: 1rem;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin: 5px;
+      width: 80%;
+      max-width: 300px;
     }
-    #players-list, #expenses-count, #debts-list { margin-top: 1rem; }
-    #waiting-message {
-      text-align: center;
-      color: #666;
-      margin-top: 1rem;
-      font-style: italic;
+    .payee-btn {
+      border: 1px solid #FF6200;
+      border-radius: 20px;
+      padding: 5px 10px;
+      margin: 4px;
+      cursor: pointer;
+      display: inline-block;
     }
-    .hidden { display: none; }
+    .selected {
+      background: #FF6200;
+      color: white;
+    }
   </style>
 </head>
 <body>
+  <h1 style="color:#FF6200">Clearing Demo</h1>
+  <div id="app">Loading...</div>
 
-<div class="card" id="login-screen">
-  <h2>Join the Clearing Demo</h2>
-  <input type="text" id="player-name" placeholder="Enter your name" />
-  <button id="join-btn">Join</button>
-  <div id="players-list"></div>
-  <div id="waiting-message" class="hidden">Waiting for Vidya to continue…</div>
-</div>
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, deleteDoc,
+      doc, setDoc, onSnapshot, serverTimestamp, getDoc
+    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-<div class="card hidden" id="expense-screen">
-  <h2>Add an Expense</h2>
-  <p id="expenses-count"></p>
-  <label>Payer:</label>
-  <select id="payer"></select>
-  <label>Payees (select 2+):</label>
-  <select id="payees" multiple size="5"></select>
-  <label>Amount (1–1000):</label>
-  <input id="amount" type="number" min="1" max="1000" placeholder="Enter amount" />
-  <button id="submit-expense-btn">Submit Expense</button>
-  <div id="waiting-message-2" class="hidden">Waiting for Vidya to continue…</div>
-</div>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
+      authDomain: "clearing-demo.firebaseapp.com",
+      projectId: "clearing-demo",
+      storageBucket: "clearing-demo.firebasestorage.app",
+      messagingSenderId: "21071168079",
+      appId: "1:21071168079:web:4471b13152955dbde6a03a"
+    };
 
-<div class="card hidden" id="debts-screen">
-  <h2>Who owes whom?</h2>
-  <div id="debts-list"></div>
-  <button id="simplify-btn" class="hidden">Simplify Debt</button>
-  <div id="waiting-message-3" class="hidden">Waiting for Vidya to continue…</div>
-</div>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-<div class="card hidden" id="host-controls">
-  <h2>Host Controls (Vidya)</h2>
-  <button id="continue-btn">Continue</button>
-  <button id="reset-btn">Reset Expenses</button>
-  <button id="restart-btn">Start Over</button>
-</div>
+    let player = JSON.parse(localStorage.getItem("player"));
+    let stage = "login";
+    let players = [];
+    let expenses = [];
+    let simplified = [];
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import {
-    getFirestore, collection, addDoc, getDocs, setDoc, doc,
-    deleteDoc, writeBatch, onSnapshot, updateDoc
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    const appDiv = document.getElementById("app");
 
-  const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
-    authDomain: "clearing-demo.firebaseapp.com",
-    projectId: "clearing-demo",
-    storageBucket: "clearing-demo.appspot.com",
-    messagingSenderId: "21071168079",
-    appId: "1:21071168079:web:4471b13152955dbde6a03a"
-  };
+    async function init() {
+      const stRef = doc(db, "state", "game");
+      const snap = await getDoc(stRef);
+      if (!snap.exists()) await setDoc(stRef, { stage: "login" });
 
-  const app = initializeApp(FIREBASE_CONFIG);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
-  let currentPlayerId = null;
-  let currentPlayerName = null;
-  let isHost = false;
-
-  const loginScreen = document.getElementById("login-screen");
-  const expenseScreen = document.getElementById("expense-screen");
-  const debtsScreen = document.getElementById("debts-screen");
-  const hostControls = document.getElementById("host-controls");
-
-  const waiting1 = document.getElementById("waiting-message");
-  const waiting2 = document.getElementById("waiting-message-2");
-  const waiting3 = document.getElementById("waiting-message-3");
-
-  const joinBtn = document.getElementById("join-btn");
-  const continueBtn = document.getElementById("continue-btn");
-  const resetBtn = document.getElementById("reset-btn");
-  const restartBtn = document.getElementById("restart-btn");
-  const simplifyBtn = document.getElementById("simplify-btn");
-
-  const expensesCount = document.getElementById("expenses-count");
-  const payerSelect = document.getElementById("payer");
-  const payeesSelect = document.getElementById("payees");
-  const amountInput = document.getElementById("amount");
-  const debtsList = document.getElementById("debts-list");
-  const playersListDiv = document.getElementById("players-list");
-
-  signInAnonymously(auth).catch(console.error);
-
-  // --- Sync phase in Firestore for everyone
-  const phaseDoc = doc(db, "meta", "phase");
-  async function setPhase(n) { await setDoc(phaseDoc, { phase: n }); }
-
-  onSnapshot(phaseDoc, snap => {
-    const phase = snap.data()?.phase || 1;
-    if (!isHost) {
-      // Show/hide waiting messages for non-hosts
-      waiting1.classList.add("hidden");
-      waiting2.classList.add("hidden");
-      waiting3.classList.add("hidden");
-      loginScreen.classList.add("hidden");
-      expenseScreen.classList.add("hidden");
-      debtsScreen.classList.add("hidden");
-
-      if (phase === 1) { loginScreen.classList.remove("hidden"); waiting1.classList.remove("hidden"); }
-      if (phase === 2) { expenseScreen.classList.remove("hidden"); waiting2.classList.remove("hidden"); }
-      if (phase === 3) { debtsScreen.classList.remove("hidden"); waiting3.classList.remove("hidden"); }
+      onSnapshot(collection(db, "players"), (s) => {
+        players = s.docs.map(d => ({ id: d.id, ...d.data() }));
+        render();
+      });
+      onSnapshot(collection(db, "expenses"), (s) => {
+        expenses = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      });
+      onSnapshot(stRef, (s) => {
+        if (s.exists()) {
+          stage = s.data().stage;
+          render();
+        }
+      });
+      render();
     }
-  });
 
-  // --- Players realtime
-  onSnapshot(collection(db, "players"), (snapshot) => {
-    const players = snapshot.docs.map(doc => doc.data());
-    playersListDiv.innerHTML = "<strong>Players joined:</strong> " + players.map(p => p.name).join(", ");
-    updatePlayerSelectors(players);
-    if (players.length > 0) {
-      const first = players[0];
-      if (first.id === currentPlayerId) {
-        isHost = true;
-        currentPlayerName = "Vidya";
-        setDoc(doc(db, "players", currentPlayerId), { id: currentPlayerId, name: "Vidya" });
-        hostControls.classList.remove("hidden");
+    async function handleLogin() {
+      const name = document.getElementById("name").value.trim() || "Anonymous";
+      const code = document.getElementById("code").value.trim();
+      const isAdmin = code === "13579";
+      const finalName = isAdmin ? "Vidya" : name;
+      const pRef = await addDoc(collection(db, "players"), {
+        name: finalName,
+        isAdmin,
+        joinedAt: serverTimestamp()
+      });
+      player = { id: pRef.id, name: finalName, isAdmin };
+      localStorage.setItem("player", JSON.stringify(player));
+      render();
+    }
+
+    async function nextStage() {
+      const stRef = doc(db, "state", "game");
+      if (stage === "login") await setDoc(stRef, { stage: "expenses" });
+      else if (stage === "expenses") await setDoc(stRef, { stage: "debts" });
+    }
+
+    async function resetAll() {
+      const pSnap = await getDocs(collection(db, "players"));
+      for (const d of pSnap.docs) await deleteDoc(d.ref);
+      const eSnap = await getDocs(collection(db, "expenses"));
+      for (const d of eSnap.docs) await deleteDoc(d.ref);
+      await setDoc(doc(db, "state", "game"), { stage: "login" });
+      localStorage.removeItem("player");
+      player = null;
+      render();
+    }
+
+    async function addExpense() {
+      const payer = document.getElementById("payer").value;
+      const amount = parseInt(document.getElementById("amount").value);
+      const selected = [...document.querySelectorAll(".payee-btn.selected")].map(b => b.dataset.name);
+      if (!payer || selected.length < 2 || isNaN(amount)) return alert("Please fill all fields.");
+      if (amount < 1 || amount > 1000) return alert("Amount must be between 1 and 1000.");
+      await addDoc(collection(db, "expenses"), { payer, payees: selected, amount });
+      document.getElementById("amount").value = "";
+      selected.forEach(n => document.querySelector(`[data-name='${n}']`).classList.remove("selected"));
+      render();
+    }
+
+    function simplify() {
+      const balance = {};
+      expenses.forEach(e => {
+        const share = e.amount / e.payees.length;
+        e.payees.forEach(p => {
+          if (p === e.payer) return;
+          balance[p] = (balance[p] || 0) - share;
+          balance[e.payer] = (balance[e.payer] || 0) + share;
+        });
+      });
+      const creditors = [], debtors = [];
+      for (const [n, v] of Object.entries(balance)) {
+        if (v > 0) creditors.push({ n, v });
+        else if (v < 0) debtors.push({ n, v: -v });
+      }
+      const result = [];
+      let i = 0, j = 0;
+      while (i < debtors.length && j < creditors.length) {
+        const pay = Math.min(debtors[i].v, creditors[j].v);
+        result.push(`${debtors[i].n} → ${creditors[j].n}: €${Math.round(pay)}`);
+        debtors[i].v -= pay; creditors[j].v -= pay;
+        if (debtors[i].v === 0) i++;
+        if (creditors[j].v === 0) j++;
+      }
+      simplified = result;
+      render();
+    }
+
+    function render() {
+      if (!player) {
+        appDiv.innerHTML = `
+          <input id="name" placeholder="Enter your name" /><br>
+          <input id="code" placeholder="Admin code (optional)" type="password" /><br>
+          <button class="btn" onclick="handleLogin()">Join Game</button>
+        `;
+        return;
+      }
+
+      if (stage === "login") {
+        appDiv.innerHTML = `
+          <h3>Waiting Room</h3>
+          <p>Players joined: ${players.length}</p>
+          <ul style="list-style:none;padding:0;">${players.map(p=>`<li>${p.name}</li>`).join("")}</ul>
+          ${player.isAdmin ? `<button class="btn" onclick="nextStage()">Continue</button>` : ""}
+        `;
+        return;
+      }
+
+      if (stage === "expenses") {
+        appDiv.innerHTML = `
+          <h3>Add Expense</h3>
+          <select id="payer">
+            <option value="">Select payer</option>
+            ${players.map(p=>`<option>${p.name}</option>`).join("")}
+          </select><br>
+          <div>Select payees:</div>
+          <div>${players.map(p=>`<span class="payee-btn" data-name="${p.name}" onclick="this.classList.toggle('selected')">${p.name}</span>`).join("")}</div>
+          <input id="amount" type="number" placeholder="Amount (1-1000)" /><br>
+          <button class="btn" onclick="addExpense()">Submit</button>
+          <p>Total expenses: ${expenses.length}</p>
+          ${player.isAdmin ? `<button class="btn" onclick="nextStage()">Continue</button>` : ""}
+        `;
+        return;
+      }
+
+      if (stage === "debts") {
+        appDiv.innerHTML = `
+          <h3>Debts</h3>
+          ${simplified.length ? simplified.map(x=>`<div>${x}</div>`).join("") :
+          expenses.map(e=>`<div>${e.payer} paid €${e.amount} for [${e.payees.join(", ")}]</div>`).join("")}
+          ${player.isAdmin ? `
+            <div style="margin-top:20px;">
+              <button class="btn" onclick="simplify()">Simplify Debts</button>
+              <button class="btn btn-gray" onclick="resetAll()">Reset</button>
+            </div>` : ""}
+        `;
       }
     }
-  });
 
-  async function joinGame() {
-    const nameInput = document.getElementById("player-name");
-    let name = nameInput.value.trim();
-    if (!name) return alert("Please enter your name.");
+    window.handleLogin = handleLogin;
+    window.addExpense = addExpense;
+    window.nextStage = nextStage;
+    window.resetAll = resetAll;
+    window.simplify = simplify;
 
-    const existing = await getDocs(collection(db, "players"));
-    const playerId = crypto.randomUUID();
-
-    if (existing.empty) {
-      name = "Vidya";
-      isHost = true;
-      hostControls.classList.remove("hidden");
-      document.title = "Clearing Demo (Vidya)";
-      await setPhase(1);
-    }
-
-    await setDoc(doc(db, "players", playerId), { id: playerId, name });
-    currentPlayerId = playerId;
-    currentPlayerName = name;
-
-    loginScreen.classList.add("hidden");
-    expenseScreen.classList.remove("hidden");
-  }
-
-  joinBtn.addEventListener("click", joinGame);
-
-  function updatePlayerSelectors(players) {
-    payerSelect.innerHTML = "";
-    payeesSelect.innerHTML = "";
-    players.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      payerSelect.appendChild(opt);
-
-      const opt2 = document.createElement("option");
-      opt2.value = p.id;
-      opt2.textContent = p.name;
-      payeesSelect.appendChild(opt2);
-    });
-  }
-
-  document.getElementById("submit-expense-btn").addEventListener("click", async () => {
-    const payer = payerSelect.value;
-    const selectedPayees = Array.from(payeesSelect.selectedOptions).map(o => o.value);
-    const amount = parseInt(amountInput.value);
-    if (!payer || selectedPayees.length < 2) return alert("Select a payer and at least 2 payees.");
-    if (isNaN(amount) || amount < 1 || amount > 1000) return alert("Please enter an amount between 1 and 1000.");
-
-    await addDoc(collection(db, "expenses"), { payer, payees: selectedPayees, amount });
-    amountInput.value = "";
-  });
-
-  onSnapshot(collection(db, "expenses"), (snapshot) => {
-    expensesCount.textContent = `Total expenses submitted: ${snapshot.size}`;
-  });
-
-  continueBtn.addEventListener("click", async () => {
-    const snap = await getDocs(phaseDoc);
-    const phase = (snap.docs?.[0]?.data?.phase) || 1;
-    if (phase === 1) { await setPhase(2); }
-    else if (phase === 2) { await setPhase(3); await showDebts(false); simplifyBtn.classList.remove("hidden"); }
-  });
-
-  resetBtn.addEventListener("click", async () => {
-    const batch = writeBatch(db);
-    const snap = await getDocs(collection(db, "expenses"));
-    snap.forEach(docSnap => batch.delete(docSnap.ref));
-    await batch.commit();
-    alert("All expenses reset.");
-    await setPhase(2);
-  });
-
-  restartBtn.addEventListener("click", async () => {
-    if (!confirm("This will remove ALL players and expenses. Continue?")) return;
-    const batch = writeBatch(db);
-    const playersSnap = await getDocs(collection(db, "players"));
-    const expensesSnap = await getDocs(collection(db, "expenses"));
-    playersSnap.forEach(docSnap => batch.delete(docSnap.ref));
-    expensesSnap.forEach(docSnap => batch.delete(docSnap.ref));
-    await batch.commit();
-    await setPhase(1);
-    alert("Game restarted.");
-    window.location.reload();
-  });
-
-  simplifyBtn.addEventListener("click", async () => {
-    await showDebts(true);
-  });
-
-  async function showDebts(simplify = false) {
-    const playersSnap = await getDocs(collection(db, "players"));
-    const players = Object.fromEntries(playersSnap.docs.map(d => [d.id, d.data().name]));
-    const expensesSnap = await getDocs(collection(db, "expenses"));
-    const balances = {};
-
-    for (const pId in players) balances[pId] = 0;
-
-    expensesSnap.docs.forEach(d => {
-      const e = d.data();
-      const share = e.amount / e.payees.length;
-      e.payees.forEach(pid => balances[pid] -= share);
-      balances[e.payer] += e.amount;
-    });
-
-    const debts = [];
-    const creditors = Object.entries(balances).filter(([_, v]) => v > 0);
-    const debtors = Object.entries(balances).filter(([_, v]) => v < 0);
-
-    if (simplify) {
-      creditors.sort((a,b) => b[1]-a[1]);
-      debtors.sort((a,b) => a[1]-b[1]);
-      let i=0,j=0;
-      while (i<creditors.length && j<debtors.length) {
-        const [cid, cAmt] = creditors[i];
-        const [did, dAmt] = debtors[j];
-        const amount = Math.min(cAmt, -dAmt);
-        debts.push(`${players[did]} owes ${players[cid]} ${amount.toFixed(0)}`);
-        creditors[i][1]-=amount;
-        debtors[j][1]+=amount;
-        if (creditors[i][1] < 0.01) i++;
-        if (debtors[j][1] > -0.01) j++;
-      }
-    } else {
-      for (const [pid, amt] of Object.entries(balances)) {
-        debts.push(`${players[pid]}: ${amt.toFixed(0)}`);
-      }
-    }
-    debtsList.innerHTML = debts.map(d => `<div>${d}</div>`).join("");
-  }
-</script>
+    init();
+  </script>
 </body>
 </html>
