@@ -1,296 +1,372 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clearing Demo</title>
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #fff7f2;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-      color: #333;
-    }
-    h1, h2, h3 { color: #FF6200; }
-    .container {
-      max-width: 420px;
-      margin: auto;
-      padding: 20px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border-radius: 12px;
-      border: 1px solid #ddd;
-      font-size: 16px;
-    }
-    button {
-      background-color: #FF6200;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      border: none;
-      transition: all 0.3s ease;
-    }
-    button:hover {
-      background-color: #e15700;
-    }
-    .btn-gray {
-      background-color: #ccc;
-      color: #333;
-    }
-    .card {
-      background: white;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 12px;
-      border-left: 5px solid #FF6200;
-      text-align: left;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    .badge {
-      display: inline-block;
-      background: #ffd7bf;
-      color: #FF6200;
-      border-radius: 20px;
-      padding: 6px 12px;
-      margin: 4px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-weight: 600;
-    }
-    .badge.selected {
-      background: #FF6200;
-      color: white;
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Clearing demo — Vidya</title>
+<style>
+  :root{
+    --orange:#FF6200;
+    --bg:#fff7f2;
+    --card:#fff;
+    --muted:#666;
+    --radius:12px;
+  }
+  body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); margin:0; color:#222;}
+  .wrap{max-width:520px;margin:18px auto;padding:16px;}
+  header{display:flex;align-items:center;gap:12px;}
+  h1{color:var(--orange);margin:6px 0 12px;font-size:20px;}
+  .card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:0 6px 18px rgba(0,0,0,0.06);margin-bottom:12px;text-align:center;}
+  input[type=text], input[type=number], select{width:100%;padding:10px;border-radius:10px;border:1px solid #e6e6e6;margin:8px 0;box-sizing:border-box}
+  .btn{background:var(--orange);color:white;border:none;padding:10px;border-radius:10px;font-weight:700;cursor:pointer;width:100%}
+  .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,0.06);color:#333}
+  .btn-gray{background:#ccc;color:#222}
+  .muted{color:var(--muted);font-size:13px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:6px 0;}
+  .badge{padding:8px 12px;border-radius:999px;border:1px solid #ffd6bf;background:#fff;color:var(--orange);cursor:pointer;font-weight:600}
+  .badge.selected{background:var(--orange);color:white}
+  .row{display:flex;gap:8px}
+  .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#fff6ee;color:var(--orange);font-weight:700}
+  .debt{background:#fff;border-left:4px solid var(--orange);padding:10px;border-radius:8px;margin:8px 0;text-align:left}
+  .small{font-size:13px;padding:8px}
+  @media(min-width:640px){.wrap{padding:24px}}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>Clearing Simulation</h1>
-    <div id="app"></div>
-  </div>
+<div class="wrap">
+  <header><div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--orange),#ff8a47);display:flex;align-items:center;justify-content:center;color:white;font-weight:800">C</div>
+    <div><h1>Clearing Simulation</h1><div class="muted">Scan QR → join → add expenses → Vidya controls</div></div></header>
 
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  <div id="app"></div>
+  <div style="height:20px"></div>
+  <div style="text-align:center;font-size:12px;color:var(--muted)">ING orange theme • Amounts limited to whole numbers 1–1000</div>
+</div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
-      authDomain: "clearing-demo.firebaseapp.com",
-      projectId: "clearing-demo",
-      storageBucket: "clearing-demo.firebasestorage.app",
-      messagingSenderId: "21071168079",
-      appId: "1:21071168079:web:4471b13152955dbde6a03a"
-    };
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  // ---------- FIREBASE CONFIG ----------
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCewxnuNzlIe9MydL-ozj7URdk2yEvb_kU",
+    authDomain: "clearing-demo.firebaseapp.com",
+    projectId: "clearing-demo",
+    storageBucket: "clearing-demo.appspot.com",
+    messagingSenderId: "21071168079",
+    appId: "1:21071168079:web:4471b13152955dbde6a03a"
+  };
+  // -------------------------------------
 
-    let player = null;
-    let players = [];
-    let expenses = [];
-    let stage = "login";
-    let simplified = [];
+  const app = initializeApp(FIREBASE_CONFIG);
+  const db = getFirestore(app);
 
-    const appDiv = document.getElementById("app");
+  // app state
+  let me = JSON.parse(localStorage.getItem('clearing_me')) || null; // {id, name, isAdmin}
+  let players = [];
+  let expenses = [];
+  let stage = 'login'; // 'login' | 'waiting' | 'expenses' | 'debts'
+  let simplified = []; // array of strings for simplified view
 
-    const render = () => {
-      if (stage === "login") {
-        appDiv.innerHTML = `
-          <h3>Enter your name to join</h3>
-          <input id="nameInput" placeholder="Your name" />
-          <input id="codeInput" placeholder="(Admin code optional)" />
-          <button id="joinBtn">Join</button>
-        `;
-        document.getElementById("joinBtn").onclick = async () => {
-          const name = document.getElementById("nameInput").value.trim();
-          const code = document.getElementById("codeInput").value.trim();
-          if (!name) return alert("Please enter a name");
+  const appEl = document.getElementById('app');
 
-          const snapshot = await getDocs(collection(db, "players"));
-          const playerCount = snapshot.size;
+  // Ensure stage doc exists (once)
+  (async function ensureStage(){
+    try {
+      const stageRef = doc(db, 'stage', 'state');
+      // set default to login if missing (we don't read back here; onSnapshot handles)
+      await setDoc(stageRef, { value: 'login' }, { merge: true });
+    } catch(e){ console.warn('stage ensure failed', e); }
+  })();
 
-          const isAdmin = code === "13579" || playerCount === 0;
-          const playerName = isAdmin ? "Vidya" : name;
+  // realtime listeners
+  onSnapshot(collection(db, 'players'), snap => {
+    players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // ensure local name update if our id changed etc
+    if (me) {
+      const found = players.find(p=>p.id===me.id);
+      if (found) me.name = found.name;
+    }
+    render();
+  });
 
-          const ref = await addDoc(collection(db, "players"), {
-            name: playerName,
-            isAdmin
-          });
-          player = { id: ref.id, name: playerName, isAdmin };
-          stage = "waiting";
-          render();
+  onSnapshot(collection(db, 'expenses'), snap => {
+    // store payer as id, payees as array of ids
+    expenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  });
+
+  onSnapshot(doc(db,'stage','state'), snap => {
+    if (!snap.exists()) return;
+    const val = snap.data().value;
+    stage = val;
+    // when entering debts, precompute simplified (but display raw first)
+    if (stage === 'debts') {
+      simplified = computeSimplified(); // precompute
+    } else {
+      simplified = [];
+    }
+    render();
+  });
+
+  // --------- UI & Actions ----------
+  function render(){
+    // not joined yet
+    if (!me) {
+      appEl.innerHTML = `
+        <div class="card">
+          <h2>Join session</h2>
+          <input id="nameIn" type="text" placeholder="Your name" />
+          <input id="codeIn" type="text" placeholder="Admin code (optional)" />
+          <button class="btn" id="joinBtn">Join</button>
+          <div class="muted small" style="margin-top:8px">If no code provided, first joiner becomes Vidya (admin).</div>
+        </div>
+      `;
+      document.getElementById('joinBtn').onclick = joinHandler;
+      return;
+    }
+
+    // waiting screen (after join until admin hits continue)
+    if (stage === 'login' || stage === 'waiting') {
+      // show players badges
+      const ppl = players.map(p => `<span class="pill">${escapeHtml(p.name)}</span>`).join(' ');
+      appEl.innerHTML = `
+        <div class="card">
+          <h3>Waiting room</h3>
+          <div style="margin:12px 0">${ppl || '<span class="muted">no players yet</span>'}</div>
+          ${me.isAdmin ? `<button class="btn" id="btnContinue">Continue → Add expenses</button>` : `<div class="muted">Waiting for Vidya to continue…</div>`}
+        </div>
+      `;
+      if (me.isAdmin) document.getElementById('btnContinue').onclick = async () => {
+        await setDoc(doc(db,'stage','state'), { value: 'expenses' });
+      };
+      return;
+    }
+
+    // expenses stage
+    if (stage === 'expenses') {
+      // who paid badges (single-select)
+      const payerBadges = players.map(p=>`<span class="badge" data-id="${p.id}">${escapeHtml(p.name)}</span>`).join(' ');
+      // who owes badges (multi)
+      const oweBadges = players.map(p=>`<span class="badge" data-id="${p.id}">${escapeHtml(p.name)}</span>`).join(' ');
+      appEl.innerHTML = `
+        <div class="card">
+          <h3>Add an expense</h3>
+          <div class="muted">Who paid?</div>
+          <div id="payerArea" class="badges" style="margin-bottom:8px">${payerBadges}</div>
+          <div class="muted">Who owes? (select 2 or more)</div>
+          <div id="oweArea" class="badges">${oweBadges}</div>
+          <input id="amt" type="number" min="1" max="1000" placeholder="Amount (1–1000)" />
+          <button class="btn" id="addExpenseBtn">Submit expense</button>
+          <div class="muted small" style="margin-top:10px">Total expenses: ${expenses.length}</div>
+          ${me.isAdmin ? `<button class="btn" id="toDebts" style="margin-top:8px">Continue → Show debts</button>` : `<div class="muted" style="margin-top:10px">Waiting for Vidya to continue…</div>`}
+        </div>
+      `;
+
+      // badge selection logic
+      const payerArea = document.getElementById('payerArea');
+      const oweArea = document.getElementById('oweArea');
+
+      // single-select for payer
+      payerArea.querySelectorAll('.badge').forEach(b=>{
+        b.onclick = () => {
+          // clear other selections
+          payerArea.querySelectorAll('.badge').forEach(x=>x.classList.remove('selected'));
+          b.classList.add('selected');
         };
-      }
-
-      else if (stage === "waiting") {
-        appDiv.innerHTML = `
-          <h3>Waiting for others to join...</h3>
-          <div style="margin: 10px 0;">
-            ${players.map(p => `<span class="badge">${p.name}</span>`).join(" ")}
-          </div>
-          ${player.isAdmin ? `<button id="continueBtn">Continue</button>` : ""}
-        `;
-        if (player.isAdmin) {
-          document.getElementById("continueBtn").onclick = async () => {
-            await setDoc(doc(db, "stage", "state"), { value: "expenses" });
-          };
-        }
-      }
-
-      else if (stage === "expenses") {
-        appDiv.innerHTML = `
-          <h3>Add an Expense</h3>
-          <select id="payerSelect">
-            ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join("")}
-          </select>
-          <input id="amountInput" type="number" placeholder="Amount (1–1000)" min="1" max="1000" />
-          <div id="payeesContainer">
-            ${players.map(p => `<span class="badge" data-id="${p.id}">${p.name}</span>`).join("")}
-          </div>
-          <button id="addExpenseBtn">Add Expense</button>
-          <div>Total Expenses: ${expenses.length}</div>
-          ${player.isAdmin ? `<button id="continueBtn">Continue to Debts</button>` : ""}
-        `;
-
-        // Badge click toggle
-        document.querySelectorAll(".badge").forEach(badge => {
-          badge.onclick = () => badge.classList.toggle("selected");
-        });
-
-        document.getElementById("addExpenseBtn").onclick = async () => {
-          const payer = document.getElementById("payerSelect").value;
-          const amount = parseInt(document.getElementById("amountInput").value);
-          const payees = Array.from(document.querySelectorAll(".badge.selected")).map(b => b.dataset.id);
-          if (!payer || !amount || amount < 1 || amount > 1000 || payees.length < 2) {
-            alert("Enter valid amount (1–1000) and select 2+ payees");
-            return;
-          }
-          await addDoc(collection(db, "expenses"), { payer, amount, payees });
-        };
-        if (player.isAdmin) {
-          document.getElementById("continueBtn").onclick = async () => {
-            await setDoc(doc(db, "stage", "state"), { value: "debts" });
-          };
-        }
-      }
-
-      else if (stage === "debts") {
-        const findName = (idOrName) => {
-          const p = players.find(p => p.id === idOrName || p.name === idOrName);
-          return p ? p.name : idOrName;
-        };
-
-        const beforeList = expenses.map(
-          (e) => `${findName(e.payer)} paid €${e.amount} for [${e.payees.map(findName).join(", ")}]`
-        );
-
-        appDiv.innerHTML = `
-          <h3>Debts</h3>
-          <div id="debtsDisplay" data-mode="raw">
-            ${beforeList.map(x => `<div class="card">${x}</div>`).join("")}
-          </div>
-          ${player.isAdmin ? `
-            <div style="margin-top:20px;">
-              <button id="toggleSimplify">Toggle Simplify View</button>
-              <button class="btn-gray" id="resetBtn">Reset</button>
-              <button class="btn-gray" id="startOverBtn">Start Over</button>
-            </div>` : ""}
-        `;
-
-        if (player.isAdmin) {
-          document.getElementById("toggleSimplify").onclick = () => {
-            if (simplified.length === 0) simplify();
-            else toggleView();
-          };
-          document.getElementById("resetBtn").onclick = resetExpenses;
-          document.getElementById("startOverBtn").onclick = startOver;
-        }
-      }
-    };
-
-    // 🔁 Firebase listeners
-    onSnapshot(collection(db, "players"), (snap) => {
-      players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (stage === "waiting") render();
-    });
-    onSnapshot(collection(db, "expenses"), (snap) => {
-      expenses = snap.docs.map(d => d.data());
-      if (stage === "expenses") render();
-    });
-    onSnapshot(doc(db, "stage", "state"), (docSnap) => {
-      if (docSnap.exists()) {
-        stage = docSnap.data().value;
-        if (stage === "debts") simplify();
-        render();
-      }
-    });
-
-    // 🧮 Simplify debts
-    function simplify() {
-      const balance = {};
-      expenses.forEach(e => {
-        const per = e.amount / e.payees.length;
-        e.payees.forEach(p => balance[p] = (balance[p] || 0) - per);
-        balance[e.payer] = (balance[e.payer] || 0) + e.amount;
+      });
+      // multi-select for owe
+      oweArea.querySelectorAll('.badge').forEach(b=>{
+        b.onclick = () => b.classList.toggle('selected');
       });
 
-      const creditors = [], debtors = [];
-      for (const [id, amt] of Object.entries(balance)) {
-        if (amt > 0.5) creditors.push({ id, amt });
-        else if (amt < -0.5) debtors.push({ id, amt: -amt });
+      document.getElementById('addExpenseBtn').onclick = async () => {
+        const payerEl = payerArea.querySelector('.badge.selected');
+        const payeeEls = Array.from(oweArea.querySelectorAll('.badge.selected'));
+        const amtStr = document.getElementById('amt').value;
+        const amt = parseInt(amtStr, 10);
+        if (!payerEl) return alert('Select who paid (single).');
+        if (payeeEls.length < 2) return alert('Select at least 2 payees.');
+        if (!amt || amt < 1 || amt > 1000) return alert('Amount must be between 1 and 1000.');
+        const payerId = payerEl.dataset.id;
+        const payeeIds = payeeEls.map(e=>e.dataset.id);
+        await addDoc(collection(db,'expenses'), { payer: payerId, payees: payeeIds, amount: amt });
+        // clear UI
+        payerArea.querySelectorAll('.badge').forEach(x=>x.classList.remove('selected'));
+        oweArea.querySelectorAll('.badge').forEach(x=>x.classList.remove('selected'));
+        document.getElementById('amt').value = '';
+      };
+
+      if (me.isAdmin) document.getElementById('toDebts').onclick = async ()=> {
+        await setDoc(doc(db,'stage','state'), { value: 'debts' });
+      };
+
+      return;
+    }
+
+    // debts stage — show raw first
+    if (stage === 'debts') {
+      // construct readable beforeList
+      const beforeList = expenses.map(e => {
+        const payerName = findName(e.payer);
+        const payeeNames = (e.payees || []).map(findName).join(', ');
+        return `${payerName} paid €${e.amount} for [${payeeNames}]`;
+      });
+
+      // default render raw (complicated) first
+      const currentHtml = beforeList.map(b => `<div class="debt">${escapeHtml(b)}</div>`).join('');
+      appEl.innerHTML = `
+        <div class="card">
+          <h3>Debts (raw / complicated)</h3>
+          <div id="debtsArea" data-mode="raw">${currentHtml || '<div class="muted">No expenses</div>'}</div>
+          ${me.isAdmin ? `
+            <div style="margin-top:12px">
+              <button class="btn" id="toggleBtn">Toggle Simplify View</button>
+              <button class="btn btn-gray" id="resetBtn" style="margin-top:8px">Reset expenses</button>
+              <button class="btn btn-gray" id="startBtn" style="margin-top:8px">Start Over (clear players)</button>
+            </div>
+          ` : `<div class="muted" style="margin-top:12px">Waiting for Vidya to simplify or reset.</div>`}
+        </div>
+      `;
+
+      // wire admin controls
+      if (me.isAdmin) {
+        document.getElementById('toggleBtn').onclick = () => {
+          // if simplified precomputed is empty, compute now
+          if (!simplified || simplified.length === 0) {
+            simplified = computeSimplified();
+            // switch to simplified view
+            const html = simplified.length ? simplified.map(s=>`<div class="debt">${escapeHtml(s)}</div>`).join('') : '<div class="muted">No settlements required</div>';
+            const area = document.getElementById('debtsArea');
+            area.innerHTML = html;
+            area.dataset.mode = 'simple';
+            return;
+          }
+          // if we already have simplified, toggle raw <-> simple
+          const area = document.getElementById('debtsArea');
+          if (area.dataset.mode === 'raw') {
+            const html = simplified.length ? simplified.map(s=>`<div class="debt">${escapeHtml(s)}</div>`).join('') : '<div class="muted">No settlements required</div>';
+            area.innerHTML = html;
+            area.dataset.mode = 'simple';
+          } else {
+            // show raw
+            const html = beforeList.map(b=>`<div class="debt">${escapeHtml(b)}</div>`).join('');
+            area.innerHTML = html;
+            area.dataset.mode = 'raw';
+          }
+        };
+
+        document.getElementById('resetBtn').onclick = async ()=> {
+          // delete all expense docs
+          const snap = await getDocs(collection(db,'expenses'));
+          const promises = snap.docs.map(d => deleteDoc(d.ref));
+          await Promise.all(promises);
+          // set stage back to expenses
+          await setDoc(doc(db,'stage','state'), { value:'expenses' });
+        };
+
+        document.getElementById('startBtn').onclick = async ()=> {
+          if (!confirm('Start over: delete all players and expenses?')) return;
+          // delete players & expenses
+          const snapP = await getDocs(collection(db,'players'));
+          const snapE = await getDocs(collection(db,'expenses'));
+          const all = [...snapP.docs.map(d=>deleteDoc(d.ref)), ...snapE.docs.map(d=>deleteDoc(d.ref))];
+          await Promise.all(all);
+          await setDoc(doc(db,'stage','state'), { value:'login' });
+          // clear local and reload so host UI resets
+          localStorage.removeItem('clearing_me');
+          location.reload();
+        };
       }
-      simplified = [];
-      while (creditors.length && debtors.length) {
-        const c = creditors[0], d = debtors[0];
-        const pay = Math.min(c.amt, d.amt);
-        simplified.push(`${findName(d.id)} → ${findName(c.id)}: €${pay.toFixed(2)}`);
-        c.amt -= pay; d.amt -= pay;
-        if (c.amt < 0.5) creditors.shift();
-        if (d.amt < 0.5) debtors.shift();
+
+      return;
+    }
+
+    // fallback
+    appEl.innerHTML = `<div class="card">Loading…</div>`;
+  }
+
+  // ---------- helpers ----------
+  function escapeHtml(s){
+    if (s == null) return '';
+    return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+
+  function findName(id){
+    const p = players.find(x => x.id === id);
+    return p ? p.name : id;
+  }
+
+  // compute simplified settlements (greedy)
+  function computeSimplified(){
+    const balances = {};
+    // init
+    players.forEach(p => balances[p.id] = balances[p.id] || 0);
+    // For each expense: payer paid amount; each payee owes share.
+    for (const e of expenses) {
+      const payer = e.payer;
+      const payees = e.payees || [];
+      const amt = Number(e.amount) || 0;
+      if (!payees.length) continue;
+      const share = Math.floor(amt / payees.length); // whole units
+      // payer is credited by total and payees are debited by shares
+      balances[payer] = (balances[payer] || 0) + (amt - share * payees.length); // remainder with payer
+      // Instead: better to do conventional netting:
+      balances[payer] = (balances[payer] || 0) + amt;
+      for (const pid of payees) {
+        balances[pid] = (balances[pid] || 0) - share;
       }
+      // Note: To keep whole numbers and avoid fractions, we use floor share and leave remainder in payer
     }
 
-    function toggleView() {
-      const div = document.getElementById("debtsDisplay");
-      if (!div) return;
-      if (div.dataset.mode === "raw") {
-        div.innerHTML = simplified.map(x => `<div class="card">${x}</div>`).join("");
-        div.dataset.mode = "simple";
-      } else {
-        div.innerHTML = expenses.map(
-          e => `<div class="card">${findName(e.payer)} paid €${e.amount} for [${e.payees.map(findName).join(", ")}]</div>`
-        ).join("");
-        div.dataset.mode = "raw";
-      }
+    // Now convert to creditors (+) and debtors (-)
+    const creditors = [], debtors = [];
+    for (const [id, val] of Object.entries(balances)) {
+      const rounded = Math.round(val);
+      if (rounded > 0) creditors.push({ id, amt: rounded });
+      else if (rounded < 0) debtors.push({ id, amt: -rounded });
     }
 
-    async function resetExpenses() {
-      const snaps = await getDocs(collection(db, "expenses"));
-      snaps.forEach(async s => await deleteDoc(s.ref));
-      await setDoc(doc(db, "stage", "state"), { value: "expenses" });
+    // greedy matching
+    creditors.sort((a,b)=>b.amt - a.amt);
+    debtors.sort((a,b)=>b.amt - a.amt);
+    const settlements = [];
+    let i=0,j=0;
+    while (i<debtors.length && j<creditors.length) {
+      const d = debtors[i];
+      const c = creditors[j];
+      const pay = Math.min(d.amt, c.amt);
+      settlements.push(`${findName(d.id)} → ${findName(c.id)}: €${pay}`);
+      d.amt -= pay;
+      c.amt -= pay;
+      if (d.amt === 0) i++;
+      if (c.amt === 0) j++;
     }
+    return settlements;
+  }
 
-    async function startOver() {
-      const playersSnap = await getDocs(collection(db, "players"));
-      playersSnap.forEach(async s => await deleteDoc(s.ref));
-      const expensesSnap = await getDocs(collection(db, "expenses"));
-      expensesSnap.forEach(async s => await deleteDoc(s.ref));
-      await setDoc(doc(db, "stage", "state"), { value: "login" });
-      location.reload();
-    }
-
-    function findName(idOrName) {
-      const p = players.find(p => p.id === idOrName || p.name === idOrName);
-      return p ? p.name : idOrName;
-    }
-
+  // join handler
+  async function joinHandler(){
+    const name = (document.getElementById('nameIn')?.value || '').trim();
+    const code = (document.getElementById('codeIn')?.value || '').trim();
+    if (!name) return alert('Please enter a name');
+    // check existing players count (first becomes admin if no code)
+    const snap = await getDocs(collection(db,'players'));
+    const isAdmin = (code === '13579') || (snap.size === 0);
+    const finalName = isAdmin ? 'Vidya' : name;
+    const ref = await addDoc(collection(db,'players'), { name: finalName, isAdmin });
+    me = { id: ref.id, name: finalName, isAdmin };
+    localStorage.setItem('clearing_me', JSON.stringify(me));
+    // set stage to waiting (so others know)
+    await setDoc(doc(db,'stage','state'), { value:'waiting' });
     render();
-  </script>
+  }
+
+  // initial render
+  render();
+
+  // done
+</script>
 </body>
 </html>
